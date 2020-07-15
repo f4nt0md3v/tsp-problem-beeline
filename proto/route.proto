@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+// service -> method -> message
+
+service Route {
+  // GetRoute returns the route for the provided slice of cities with starting city
+  rpc GetRoute(RouteRequest) returns (RouteResponse);
+}
+
+// RouteRequest defines the request for a GetRoute call
+message RouteRequest {
+  // StartingCity is the starting point of the route
+  string start_city = 1;
+  // List of cities contains all the cities the traveler must visit
+  repeated string cities_list = 2;
+}
+
+// RouteResponse is the response from a GetRoute call, it contains
+// path from starting point through all the cities in the list.
+message RouteResponse {
+  repeated RoutePath routes = 1;
+  string error = 2;
+}
+
+message RoutePath {
+  repeated string path = 1;
+}
