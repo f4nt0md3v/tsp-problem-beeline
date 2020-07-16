@@ -20,11 +20,6 @@ func NewRouteServer(log *zap.SugaredLogger) *RouteServer {
 	return &RouteServer{log: log}
 }
 
-type Route struct {
-	Path     string
-	Distance int
-}
-
 // GetRoute implements the RouteServer GetRoute method and returns the paths
 // for the given list of cities
 func (s *RouteServer) GetRoute(_ context.Context, r *pb.RouteRequest) (*pb.RouteResponse, error) {
@@ -117,7 +112,7 @@ func contains(a []string, x string) bool {
 
 // Info taken from http://42-60-60.kz/pages/poleznaya-informatsiya/rasstoyaniya-mezhdu-gorodami-kazakhstana
 var (
-	DistanceMatrix = [17][17]int{
+	distMtx = [17][17]int{
 		{0, 2737, 1448, 1224, 2031, 196, 1155, 276, 694, 426, 476, 1359, 1326, 1926, 1038, 1505, 1315},
 		{2737, 0, 1301, 3493, 893, 2948, 2365, 2500, 2059, 3184, 2509, 3732, 2986, 1388, 3796, 2810, 2441},
 		{1448, 1301, 0, 2191, 595, 1659, 1063, 1201, 760, 1895, 1210, 2430, 1684, 461, 2507, 1508, 1353},
@@ -136,7 +131,7 @@ var (
 		{1505, 2810, 1508, 677, 2104, 1283, 441, 1804, 1658, 1710, 1813, 937, 167, 1998, 1756, 0, 167},
 		{1315, 2441, 1353, 832, 1847, 1255, 289, 1525, 1506, 1667, 1711, 1092, 329, 1827, 2115, 167, 0},
 	}
-	CityList = []string{
+	cityDict = []string{
 		"Нур-Султан", "Актау", "Актобе", "Алматы", "Атырау", "Караганда", "Кызылорда", "Кокшетау", "Костанай",
 		"Павлодар", "Петропавловск", "Талдыкорган", "Тараз", "Уральск", "Усть-Каменогорск", "Шымкент", "Туркестан",
 	}
@@ -144,8 +139,8 @@ var (
 
 type City int
 
-func getCity(city string) City {
-	for i, c := range CityList {
+func getCityIdx(city string) City {
+	for i, c := range cityDict {
 		if city == c {
 			return City(i)
 		}
@@ -161,9 +156,12 @@ func prepareRoutePathResponse(cityPath []string) pb.RoutePath {
 	)
 	for i, city := range cityPath {
 		if i < n-1 {
-			cur := getCity(city)
-			next := getCity(cityPath[i+1])
-			distance += int64(DistanceMatrix[cur][next])
+			// get city indexes in distMtx
+			cur := getCityIdx(city)
+			next := getCityIdx(cityPath[i+1])
+			// calculate overall distance
+			distance += int64(distMtx[cur][next])
+
 			path += city + "->"
 		} else {
 			path += city
