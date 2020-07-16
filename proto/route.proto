@@ -3,7 +3,8 @@ syntax = "proto3";
 // service -> method -> message
 
 service Route {
-  // GetRoute returns the route for the provided slice of cities with starting city
+  // GetRoute returns the route for the provided
+  // slice of cities with starting city
   rpc GetRoute(RouteRequest) returns (RouteResponse);
 }
 
@@ -15,13 +16,16 @@ message RouteRequest {
   repeated string cities_list = 2;
 }
 
-// RouteResponse is the response from a GetRoute call, it contains
-// path from starting point through all the cities in the list.
+// RouteResponse is the response from a GetRoute call, it contains all plausible
+// paths from starting point through all the cities in the original list.
 message RouteResponse {
   repeated RoutePath routes = 1;
   string error = 2;
 }
 
+// RoutePath represent one possible combination of the path
+// from starting point through all the cities in the list.
 message RoutePath {
-  repeated string path = 1;
+  string path = 1;
+  int64 distance = 2;
 }

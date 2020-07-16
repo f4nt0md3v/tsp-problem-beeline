@@ -21,13 +21,13 @@ func NewRouteServer(log *zap.SugaredLogger) *RouteServer {
 }
 
 type Route struct {
-	Path     []string
+	Path     string
 	Distance int
 }
 
 // GetRoute implements the RouteServer GetRoute method and returns the paths
 // for the given list of cities
-func (s *RouteServer) GetRoute(ctx context.Context, r *pb.RouteRequest) (*pb.RouteResponse, error) {
+func (s *RouteServer) GetRoute(_ context.Context, r *pb.RouteRequest) (*pb.RouteResponse, error) {
 	startCity := r.GetStartCity()
 	cities := r.GetCitiesList()
 	s.log.Infow("[GetRoute]", "start_city", startCity, "cities_list", cities)
@@ -40,7 +40,7 @@ func (s *RouteServer) GetRoute(ctx context.Context, r *pb.RouteRequest) (*pb.Rou
 
 	var (
 		arr    []int
-		routes []Route
+		routes []*pb.RoutePath
 		wg     sync.WaitGroup
 	)
 	// exclude startCity to save time for calculations
@@ -52,8 +52,8 @@ func (s *RouteServer) GetRoute(ctx context.Context, r *pb.RouteRequest) (*pb.Rou
 
 	for _, perm := range permutations(arr) {
 		var (
-			p = []string{startCity}
-			d int
+			p  = []string{startCity}
+			rp pb.RoutePath
 		)
 		for _, c := range perm {
 			p = append(p, cities[c-1])
@@ -61,19 +61,18 @@ func (s *RouteServer) GetRoute(ctx context.Context, r *pb.RouteRequest) (*pb.Rou
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			defer wg.Done()
-			d = calculateDistance(p)
+			rp = prepareRoutePathResponse(p)
 		}(&wg)
 		wg.Wait()
-		routes = append(routes, Route{Path: p, Distance: d})
+		routes = append(routes, &rp)
 	}
 
 	// sorting by distance happens here
 	sort.SliceStable(routes, func(i, j int) bool {
-		return routes[i].Distance < routes[j].Distance
+		return routes[i].Distance > routes[j].Distance
 	})
-	s.log.Info(routes)
 
-	return &pb.RouteResponse{Routes: nil}, nil
+	return &pb.RouteResponse{Routes: routes}, nil
 }
 
 func permutations(arr []int) [][]int {
@@ -154,15 +153,24 @@ func getCity(city string) City {
 	return -1
 }
 
-func calculateDistance(path []string) int {
-	n := len(path)
-	var distance int
-	for i, city := range path {
+func prepareRoutePathResponse(cityPath []string) pb.RoutePath {
+	n := len(cityPath)
+	var (
+		distance int64
+		path     string
+	)
+	for i, city := range cityPath {
 		if i < n-1 {
 			cur := getCity(city)
-			next := getCity(path[i+1])
-			distance += DistanceMatrix[cur][next]
+			next := getCity(cityPath[i+1])
+			distance += int64(DistanceMatrix[cur][next])
+			path += city + "->"
+		} else {
+			path += city
 		}
 	}
-	return distance
+	return pb.RoutePath{
+		Path:     path,
+		Distance: distance,
+	}
 }
